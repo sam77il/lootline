@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Unity.VisualScripting;
+using UnityEngine.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -17,6 +17,12 @@ public class LobbyManager : MonoBehaviour
 
     [SerializeField]
     private List<UITab> uiTabs;
+
+    [SerializeField]
+    private Button startGameButton;
+
+    [SerializeField]
+    private Button quitGameButton;
 
     [SerializeField]
     private GameObject inventoryStashContent;
@@ -46,6 +52,13 @@ public class LobbyManager : MonoBehaviour
         {
             uiTab.button.onClick.AddListener(() => SwitchTab(uiTab));
         }
+
+        startGameButton.onClick.AddListener(() => SceneManager.LoadScene("Main"));
+        #if UNITY_EDITOR
+        quitGameButton.onClick.AddListener(() => UnityEditor.EditorApplication.isPlaying = false);
+        #else
+        quitGameButton.onClick.AddListener(() => Application.Quit());
+        #endif
     }
 
     private void SwitchTab(UITab uiTab)

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -10,7 +11,45 @@ public class GameManager : MonoBehaviour
     public Dictionary<ItemObj, int> playerStash = new();
 
     [SerializeField]
+    private GameObject playerPrefab;
+
+    [SerializeField]
     private List<ItemObj> allItems;
+
+    private LLManager llManager;
+
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == "Main")
+        {
+            // Find all spawn points in the scene
+            llManager = FindAnyObjectByType<LLManager>();
+
+            if (llManager != null)
+            {
+                if (llManager.spawnPoints.Count > 0)
+                {
+                    GameObject randomSpawn = llManager.spawnPoints[Random.Range(0, llManager.spawnPoints.Count)];
+                    Instantiate(playerPrefab, randomSpawn.transform.position, randomSpawn.transform.rotation);
+                    Debug.Log($"Player spawned at {randomSpawn.transform.position}");
+                }
+                else
+                {
+                    Debug.LogWarning("LLManager not found in the scene. Spawn points will not be available.");
+                }
+            }
+        }
+    }
 
     private void Awake()
     {
