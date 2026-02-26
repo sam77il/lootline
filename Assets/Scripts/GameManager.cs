@@ -79,12 +79,12 @@ public class GameManager : MonoBehaviour
 
 public void SaveData()
 {
-    PlayerData data = new PlayerData();
+    PlayerData data = new();
     data.coins = playerLLC;
 
     foreach (var pair in playerInventory)
     {
-        InventorySaveData saveData = new InventorySaveData();
+        InventorySaveData saveData = new();
         saveData.itemID = pair.Key.itemId;
         saveData.amount = pair.Value;
 
@@ -93,7 +93,7 @@ public void SaveData()
 
     foreach (var pair in playerStash)
     {
-        InventorySaveData saveData = new InventorySaveData();
+        InventorySaveData saveData = new();
         saveData.itemID = pair.Key.itemId;
         saveData.amount = pair.Value;
 

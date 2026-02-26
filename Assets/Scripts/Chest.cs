@@ -14,28 +14,36 @@ public class Chest : MonoBehaviour
     [Header("Input")]
     public InputActionReference openAction;
 
+    [Header("UI")]
     public List<ChestItem> chestContents = new();
+    [SerializeField] private GameObject pickupBoxPrefab;
 
-    [SerializeField]
-    public GameObject pickupBoxPrefab;
     private GameObject pBox;
+    private Canvas cachedCanvas;
 
     private bool isOpen = false;
     private bool playerInRange = false;
 
-    void OnEnable()
+    private void Awake()
     {
-        openAction.action?.Enable();
+        cachedCanvas = FindAnyObjectByType<Canvas>();
+        if (cachedCanvas == null)
+            Debug.LogError("No Canvas found in scene!");
     }
 
-    void OnDisable()
+    private void OnEnable()
     {
-        openAction.action?.Disable();
+        openAction?.action?.Enable();
     }
 
-    void Update()
+    private void OnDisable()
     {
-        if (playerInRange && openAction != null && openAction.action != null && openAction.action.triggered)
+        openAction?.action?.Disable();
+    }
+
+    private void Update()
+    {
+        if (playerInRange && !isOpen && openAction?.action != null && openAction.action.WasPressedThisFrame())
         {
             OpenChest();
         }
@@ -43,29 +51,33 @@ public class Chest : MonoBehaviour
 
     private void OpenChest()
     {
-        if (!isOpen)
-        {
-            isOpen = true;
+        if (isOpen) return;
+        isOpen = true;
 
-            Debug.Log("Chest opened! Rewards given to player.");
-            foreach (var chestItem in chestContents)
-            {
-                GameManager.Instance.playerInventory.TryGetValue(chestItem.item, out int currentQuantity);
-                GameManager.Instance.playerInventory[chestItem.item] = currentQuantity + chestItem.quantity;
-                Debug.Log($"Added {chestItem.quantity} of {chestItem.item.itemLabel} to player inventory.");
-            }
-            Destroy(gameObject);
-            Destroy(pBox);
+        Debug.Log("Chest opened! Rewards given to player.");
+        foreach (var chestItem in chestContents)
+        {
+            GameManager.Instance.playerInventory.TryGetValue(chestItem.item, out int currentQuantity);
+            GameManager.Instance.playerInventory[chestItem.item] = currentQuantity + chestItem.quantity;
+            Debug.Log($"Added {chestItem.quantity} of {chestItem.item.itemLabel} to player inventory.");
         }
+
+        if (pBox != null)
+            Destroy(pBox);
+
+        // Optional: destroy after frame to prevent update conflicts
+        Destroy(gameObject, 0.1f);
     }
-    
+
     private void OnTriggerEnter(Collider other)
     {
-        if (other.CompareTag("Player"))
+        if (!other.CompareTag("Player") || isOpen || cachedCanvas == null) return;
+
+        playerInRange = true;
+
+        if (pBox == null)
         {
-            playerInRange = true;
-            Canvas canvas = FindAnyObjectByType<Canvas>();
-            pBox = Instantiate(pickupBoxPrefab, canvas.transform);
+            pBox = Instantiate(pickupBoxPrefab, cachedCanvas.transform);
             PickUp pickupBox = pBox.GetComponent<PickUp>();
             pickupBox.Initialize("Press E to open chest");
             Debug.Log("Player inside chest trigger!");
@@ -74,11 +86,13 @@ public class Chest : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player"))
-        {
-            playerInRange = false;
+        if (!other.CompareTag("Player")) return;
+
+        playerInRange = false;
+
+        if (pBox != null)
             Destroy(pBox);
-            Debug.Log("Player left chest trigger!");
-        }
+
+        Debug.Log("Player left chest trigger!");
     }
 }
