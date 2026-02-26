@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -7,14 +8,23 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance { get; private set; }
     public int playerHealth = 100;
     public int playerShield = 50;
+    public int playerLLC = 1000;
     public Dictionary<ItemObj, int> playerInventory = new();
     public Dictionary<ItemObj, int> playerStash = new();
+    public bool startedGame = false;
+    private string path;
 
     [SerializeField]
     private GameObject playerPrefab;
 
     [SerializeField]
     private List<ItemObj> allItems;
+
+    [SerializeField]
+    public List<WorkbenchCraftableItem> craftableItems;
+
+    [SerializeField]
+    public List<PurchasableItem> shopItems;
 
     private LLManager llManager;
 
@@ -53,6 +63,8 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        path = Application.persistentDataPath + "/playerdata.json";
+
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -62,11 +74,78 @@ public class GameManager : MonoBehaviour
             Instance = this;
             DontDestroyOnLoad(gameObject);
         }
+        LoadPlayerData();
+    }
 
-        foreach (var item in allItems)
+public void SaveData()
+{
+    PlayerData data = new PlayerData();
+    data.coins = playerLLC;
+
+    foreach (var pair in playerInventory)
+    {
+        InventorySaveData saveData = new InventorySaveData();
+        saveData.itemID = pair.Key.itemId;
+        saveData.amount = pair.Value;
+
+        data.inventory.Add(saveData);
+    }
+
+    foreach (var pair in playerStash)
+    {
+        InventorySaveData saveData = new InventorySaveData();
+        saveData.itemID = pair.Key.itemId;
+        saveData.amount = pair.Value;
+
+        data.stash.Add(saveData);
+    }
+
+    string json = JsonUtility.ToJson(data, true);
+    File.WriteAllText(path, json);
+}
+
+public void LoadPlayerData()
+{
+    if (!File.Exists(path))
+        return;
+
+    string json = File.ReadAllText(path);
+    PlayerData data = JsonUtility.FromJson<PlayerData>(json);
+
+    // Clear old data first (VERY IMPORTANT)
+    playerInventory.Clear();
+    playerStash.Clear();
+
+    playerLLC = data.coins;
+
+    // Load Inventory
+    foreach (InventorySaveData entry in data.inventory)
+    {
+        ItemObj item = allItems.Find(i => i.itemId == entry.itemID);
+
+        if (item != null)
         {
-            playerInventory[item] = 3;
-            playerStash[item] = 2;
+            playerInventory[item] = entry.amount;
+        }
+        else
+        {
+            Debug.LogWarning($"Item with ID {entry.itemID} not found in allItems list.");
         }
     }
+
+    // Load Stash
+    foreach (InventorySaveData entry in data.stash)
+    {
+        ItemObj item = allItems.Find(i => i.itemId == entry.itemID);
+
+        if (item != null)
+        {
+            playerStash[item] = entry.amount;
+        }
+        else
+        {
+            Debug.LogWarning($"Item with ID {entry.itemID} not found in allItems list.");
+        }
+    }
+}
 }

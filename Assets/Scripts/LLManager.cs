@@ -23,12 +23,12 @@ public class LLManager : MonoBehaviour
 
     void OnEnable()
     {
-        inventoryAction?.action?.Enable();
+        inventoryAction.action?.Enable();
     }
 
     void OnDisable()
     {
-        inventoryAction?.action?.Disable();
+        inventoryAction.action?.Disable();
     }
 
     void Update()

@@ -27,35 +27,42 @@ public class InventoryItem : MonoBehaviour
     private void OnItemClicked()
     {
         Debug.Log($"Clicked on {Item.itemLabel} in {(IsInStash ? "Stash" : "Inventory")}");
-        if (IsInStash)
+        if (!GameManager.Instance.startedGame)
         {
-            // Move item from stash to inventory
-            GameManager.Instance.playerStash.Remove(Item); // Remove from stash
-            if (GameManager.Instance.playerInventory.ContainsKey(Item))
+            if (IsInStash)
             {
-                GameManager.Instance.playerInventory[Item] += Amount; // Add to inventory
+                // Move item from stash to inventory
+                GameManager.Instance.playerStash.Remove(Item); // Remove from stash
+                if (GameManager.Instance.playerInventory.ContainsKey(Item))
+                {
+                    GameManager.Instance.playerInventory[Item] += Amount; // Add to inventory
+                }
+                else
+                {
+                    GameManager.Instance.playerInventory[Item] = Amount; // Add new item to inventory
+                }
             }
             else
             {
-                GameManager.Instance.playerInventory[Item] = Amount; // Add new item to inventory
+                // Move item from inventory to stash
+                GameManager.Instance.playerInventory.Remove(Item); // Remove from inventory
+                if (GameManager.Instance.playerStash.ContainsKey(Item))
+                {
+                    GameManager.Instance.playerStash[Item] += Amount; // Add to stash
+                }
+                else
+                {
+                    GameManager.Instance.playerStash[Item] = Amount; // Add new item to stash
+                }
             }
-        }
-        else
+            LobbyManager.Instance.LoadInventoryTab(); // Refresh UI
+            UpdateAmountText();
+        } else
         {
-            // Move item from inventory to stash
-            GameManager.Instance.playerInventory.Remove(Item); // Remove from inventory
-            if (GameManager.Instance.playerStash.ContainsKey(Item))
-            {
-                GameManager.Instance.playerStash[Item] += Amount; // Add to stash
-            }
-            else
-            {
-                GameManager.Instance.playerStash[Item] = Amount; // Add new item to stash
-            }
+            // Implement in-game item usage logic here
+            Debug.Log($"Using {Item.itemLabel} in-game (not implemented yet)");
         }
 
-        LobbyManager.Instance.LoadInventoryTab(); // Refresh UI
-        UpdateAmountText();
     }
 
     private void UpdateAmountText()

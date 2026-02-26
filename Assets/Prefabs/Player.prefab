@@ -264,7 +264,7 @@ GameObject:
   - component: {fileID: 6836814771642953933}
   m_Layer: 0
   m_Name: Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -329,6 +329,8 @@ MonoBehaviour:
   sprintAction: {fileID: -7471211009204490832, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   crouchAction: {fileID: 7040659881675835329, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   cameraTransform: {fileID: 7215771916820141959}
+  allowMovement: 1
+  allowLook: 1
   walkSpeed: 7
   sprintSpeed: 10
   crouchSpeed: 3.5

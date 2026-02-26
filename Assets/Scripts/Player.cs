@@ -47,11 +47,32 @@ public class Player : MonoBehaviour
     private float crouchHeight;
     private float standCameraY;
     private float crouchCameraY;
+    [Header("Camera Bob")]
+    [Tooltip("Vertical amplitude of the head-bob in meters.")]
+    public float bobAmplitude = 0.03f;
+    [Tooltip("Base frequency of the head-bob (Hz-ish).")]
+    public float bobFrequency = 8f;
+    [Tooltip("Tilt amount applied to the camera while bobbing (degrees).")]
+    public float bobSwayAngle = 1.2f;
+    [Tooltip("How quickly the bob blends (higher = snappier).")]
+    public float bobSmooth = 8f;
+    [Tooltip("Minimum movement speed (m/s) to start bobbing.")]
+    public float bobStartSpeed = 0.1f;
+    [Tooltip("Amplitude multiplier applied while sprinting.")]
+    public float bobSprintMultiplier = 1.6f;
+    [Tooltip("Amplitude multiplier applied while crouching/sneaking.")]
+    public float bobCrouchMultiplier = 0.45f;
+    [Tooltip("Frequency multiplier applied while sprinting.")]
+    public float bobSprintFreqMultiplier = 1.25f;
+
+    private float bobTimer = 0f;
+    private Vector3 cameraInitialLocalPos;
 
     void Awake()
     {
         controller = GetComponent<CharacterController>();
         if (cameraTransform == null && Camera.main != null) cameraTransform = Camera.main.transform;
+        if (cameraTransform != null) cameraInitialLocalPos = cameraTransform.localPosition;
         cursorLocked = lockCursor;
         SetCursorState(cursorLocked);
         // Initialize crouch heights
@@ -66,20 +87,20 @@ public class Player : MonoBehaviour
 
     void OnEnable()
     {
-        moveAction?.action?.Enable();
-        lookAction?.action?.Enable();
-        jumpAction?.action?.Enable();
-        sprintAction?.action?.Enable();
-        crouchAction?.action?.Enable();
+        moveAction.action?.Enable();
+        lookAction.action?.Enable();
+        jumpAction.action?.Enable();
+        sprintAction.action?.Enable();
+        crouchAction.action?.Enable();
     }
 
     void OnDisable()
     {
-        moveAction?.action?.Disable();
-        lookAction?.action?.Disable();
-        jumpAction?.action?.Disable();
-        sprintAction?.action?.Disable();
-        crouchAction?.action?.Disable();
+        moveAction.action?.Disable();
+        lookAction.action?.Disable();
+        jumpAction.action?.Disable();
+        sprintAction.action?.Disable();
+        crouchAction.action?.Disable();
         // Restore cursor when disabled
         SetCursorState(false);
     }
@@ -171,6 +192,51 @@ public class Player : MonoBehaviour
             if (cameraTransform != null)
             {
                 cameraTransform.localEulerAngles = new Vector3(cameraPitch, 0f, 0f);
+            }
+        }
+
+        // Camera head-bob: vertical bob + slight roll while moving (attenuated while airborne)
+        if (cameraTransform != null)
+        {
+            // Use initial x/z so bob doesn't drift; use current local Y (affected by crouch)
+            Vector3 baseCamLocal = new Vector3(cameraInitialLocalPos.x, cameraTransform.localPosition.y, cameraInitialLocalPos.z);
+            float horizSpeed = new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z).magnitude;
+
+            bool shouldBob = horizSpeed > bobStartSpeed;
+            float airFactor = 1f;
+            if (!grounded)
+            {
+                // When airborne, reduce bob proportionally to fall speed (so running down a steep slope still bobs)
+                float fallSpeed = Mathf.Abs(Mathf.Min(0f, verticalVelocity));
+                airFactor = Mathf.Clamp01(1f - (fallSpeed / 20f));
+            }
+
+            if (shouldBob && airFactor > 0.01f)
+            {
+                float speedFactor = Mathf.Clamp01(horizSpeed / Mathf.Max(0.0001f, walkSpeed));
+                // adjust intensity based on sprint / crouch
+                float amplitudeMult = 1f;
+                float freqMult = 1f;
+                if (sprint) amplitudeMult *= bobSprintMultiplier;
+                if (crouch) amplitudeMult *= bobCrouchMultiplier;
+                if (sprint) freqMult *= bobSprintFreqMultiplier;
+
+                bobTimer += dt * bobFrequency * freqMult * (0.5f + speedFactor) * (0.5f + airFactor * 0.5f);
+                float bobY = Mathf.Sin(bobTimer) * bobAmplitude * (0.5f + speedFactor) * airFactor * amplitudeMult;
+                float roll = Mathf.Sin(bobTimer * 0.5f) * bobSwayAngle * speedFactor * airFactor * amplitudeMult;
+
+                Vector3 targetPos = new Vector3(baseCamLocal.x, baseCamLocal.y + bobY, baseCamLocal.z);
+                cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, targetPos, bobSmooth * dt);
+
+                cameraTransform.localEulerAngles = new Vector3(cameraPitch, 0f, roll);
+            }
+            else
+            {
+                // Smoothly return to neutral camera position/rotation
+                cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, baseCamLocal, bobSmooth * dt);
+                cameraTransform.localEulerAngles = new Vector3(cameraPitch, 0f, 0f);
+                // gently reset timer to avoid jump when landing
+                bobTimer = Mathf.Lerp(bobTimer, 0f, bobSmooth * dt);
             }
         }
 
